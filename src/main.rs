@@ -42,8 +42,6 @@ fn main() {
 
     println!("ready!");
 
-    unsafe { triangle.translate(0.0, 1.0, 0.0) };
-
     'main: loop {
         for event in event_pump.poll_iter() {
             match event {
@@ -57,6 +55,7 @@ fn main() {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
             gl::Viewport(0, 0, 800, 800);
 
+            triangle.rotate(glm::vec3(0.0, 0.0, 1.0), 0.5);
             triangle.draw();
         }
 

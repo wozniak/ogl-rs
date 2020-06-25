@@ -71,11 +71,7 @@ impl<'a> Model<'_> {
 
         let transform_id = unsafe { shader.get_uniform("transform") };
 
-        let mut transform = glm::mat4(
-            1.0, 1.0, 1.0, 1.0,
-            1.0, 1.0, 1.0, 1.0,
-            1.0, 1.0, 1.0, 1.0,
-            1.0, 1.0, 1.0, 1.0);
+        let mut transform: glm::TMat4<f32> = glm::TMat4::identity();
 
         unsafe {
             const FLOAT_SIZE: isize = std::mem::size_of::<f32>() as isize;
