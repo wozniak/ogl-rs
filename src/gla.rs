@@ -48,6 +48,7 @@ impl Shader {
     }
 
     pub unsafe fn get_uniform(&self, name: &str) -> i32 {
+        self.use_program();
         gl::GetUniformLocation(self.id,
             CString::new(name).unwrap().as_ptr())
     }
@@ -116,18 +117,26 @@ impl<'a> Model<'_> {
         }
     }
 
+    unsafe fn push_transformation(&self) {
+        gl::UniformMatrix4fv(self.transform_id, 1, gl::FALSE, glm::value_ptr(&self.transform).as_ptr());
+    }
+
     pub unsafe fn draw(&self) {
         self.shader.use_program();
         gl::BindVertexArray(self.vao);
-        gl::DrawElements(gl::TRIANGLES, self.indices.len() as i32, gl::UNSIGNED_INT, *self.indices.as_ptr() as *const c_void)
+        gl::DrawElements(gl::TRIANGLES, self.indices.len() as i32,
+                         gl::UNSIGNED_INT, *self.indices.as_ptr() as *const c_void)
     }
 
     pub unsafe fn translate(&mut self, x: f32, y: f32, z: f32) {
         self.transform = glm::translate(&self.transform, &glm::vec3(x, y, z));
-        gl::UniformMatrix4fv(self.transform_id, 1, gl::FALSE, glm::value_ptr(&self.transform).as_ptr());
+        println!("{}", self.transform_id);
+        println!("{:?}", self.transform);
+        self.push_transformation();
     }
 
     pub unsafe fn rotate(&mut self, axis: glm::Vec3, degrees: f32) {
         self.transform = glm::rotate(&self.transform, glm::radians(&glm::vec1(degrees))[0], &axis);
+        self.push_transformation();
     }
 }
