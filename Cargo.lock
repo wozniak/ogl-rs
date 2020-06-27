@@ -140,6 +140,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "glfw"
+version = "0.38.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07afd5f1b258f091893e4a83b3acd91bb031a293186f614a119d650ad0faf7ac"
+dependencies = [
+ "bitflags",
+ "glfw-sys",
+ "libc",
+ "log",
+ "objc",
+ "raw-window-handle",
+ "semver",
+ "winapi",
+]
+
+[[package]]
+name = "glfw-sys"
+version = "3.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b567b13b593ec58ea912b2658ee6230ffe20a069fa5b771800acc69bb3a157e"
+dependencies = [
+ "cmake",
+]
+
+[[package]]
 name = "khronos_api"
 version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -170,6 +195,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "14b6052be84e6b71ab17edffc2eeabf5c2c3ae1fdb464aae35ac50c67a44e1f7"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "malloc_buf"
+version = "0.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62bb907fe88d54d8d9ce32a3cceab4218ed2f6b7d35617cafe9adf84e43919cb"
+dependencies = [
+ "libc",
 ]
 
 [[package]]
@@ -268,6 +302,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "objc"
+version = "0.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "915b1b472bc21c53464d6c8461c9d3af805ba1ef837e1cac254428f4a77177b1"
+dependencies = [
+ "malloc_buf",
+]
+
+[[package]]
 name = "paste"
 version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -291,8 +334,10 @@ name = "pong"
 version = "0.1.0"
 dependencies = [
  "gl",
+ "glfw",
  "nalgebra-glm",
  "sdl2",
+ "tobj",
 ]
 
 [[package]]
@@ -358,6 +403,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "raw-window-handle"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0a441a7a6c80ad6473bd4b74ec1c9a4c951794285bf941c2126f607c72e48211"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "rawpointer"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -414,6 +468,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "semver"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d7eb9ef2c18661902cc47e535f9bc51b78acd254da71d375c2f6720d9a40403"
+dependencies = [
+ "semver-parser",
+]
+
+[[package]]
+name = "semver-parser"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
+
+[[package]]
 name = "simba"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -445,6 +514,12 @@ checksum = "d40c6d1b69745a6ec6fb1ca717914848da4b44ae29d9b3080cbee91d72a69b14"
 dependencies = [
  "lazy_static",
 ]
+
+[[package]]
+name = "tobj"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6172100cd5b17cdd085c94f261e31101ca31886c86a2337a6687dac6d2fb3cf1"
 
 [[package]]
 name = "typenum"

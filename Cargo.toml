@@ -8,5 +8,7 @@ edition = "2018"
 
 [dependencies]
 sdl2 = { version = '*', features = ['bundled', 'static-link'] }
+tobj = '*'
+glfw = '*'
 gl = '*'
 nalgebra-glm = '*'

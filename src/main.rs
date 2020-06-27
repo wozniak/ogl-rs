@@ -1,64 +1,65 @@
 mod gla;
 
-extern crate sdl2;
+extern crate glfw;
 extern crate gl;
 extern crate nalgebra_glm as glm;
 
 use std::ffi::c_void;
+use glfw::{Action, Context, Key};
 
 fn main() {
-    let sdl = sdl2::init().unwrap();
-    let video_subsystem = sdl.video().unwrap();
+    let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
-    let gl_attr = video_subsystem.gl_attr();
+    // Create a windowed mode window and its OpenGL context
+    let (mut window, events) = glfw.create_window(800, 800, "test", glfw::WindowMode::Windowed)
+        .expect("Failed to create GLFW window.");
 
-    gl_attr.set_context_profile(sdl2::video::GLProfile::Core);
-    gl_attr.set_context_version(4, 5);
+    // Make the window's context current
+    window.make_current();
+    window.set_key_polling(true);
 
-    let window = video_subsystem
-        .window("Game", 800, 800)
-        .opengl()
-        .build()
-        .unwrap();
-    
-    let _gl_context = window.gl_create_context().unwrap();
-    let _gl = gl::load_with(|s| video_subsystem.gl_get_proc_address(s) as *const std::os::raw::c_void);
+    gl::load_with(|s| window.get_proc_address(s));
 
-    let mut event_pump = sdl.event_pump().unwrap();
+     unsafe { gl::Enable(gl::DEPTH_TEST) };
 
-    let vertices: [f32; 18] = [
-        // positions     // colors
-        0.5, -0.5, 0.0,  1.0, 0.0, 0.0,   // bottom right
-       -0.5, -0.5, 0.0,  0.0, 1.0, 0.0,   // bottom left
-        0.0,  0.5, 0.0,  0.0, 0.0, 1.0,   // top
-    ];
+    let shader = gla::Shader::new(concat!(env!("CARGO_MANIFEST_DIR"), "/res/teapot_v.glsl"),
+        concat!(env!("CARGO_MANIFEST_DIR"), "/res/teapot_f.glsl"));
 
-    let indices: [u32; 3] = [
-        0, 1, 2
-    ];
+    let mut camera = gla::Camera::new(70.0, 1.0, 0.1, 100.0);
+    let mut triangle = gla::Model::new("res/teapot.obj", &shader);
+    let light = gla::Light::new(
+        glm::vec3(1.0, 1.0, 1.0),
+        glm::vec3(3.0, 3.0, 3.0)
+    );
 
-    let shader = gla::Shader::new("vertex.glsl", "fragment.glsl");
-    let mut triangle = gla::Model::new(&vertices, &indices, &shader);
+    camera.translate(0.0, -2.0, -8.0);
 
     println!("ready!");
 
-    'main: loop {
-        for event in event_pump.poll_iter() {
+    while !window.should_close() {
+        glfw.poll_events();
+        for (_, event) in glfw::flush_messages(&events) {
+            println!("{:?}", event);
             match event {
-                sdl2::event::Event::Quit {..} => break 'main,
+                glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
+                    window.set_should_close(true)
+                },
                 _ => {},
             }
         }
 
         unsafe {
-            gl::ClearColor(0.4, 0.7, 0.7, 1.0);
+            gl::ClearColor(0.7, 0.4, 0.6, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
             gl::Viewport(0, 0, 800, 800);
 
-            triangle.rotate(glm::vec3(0.0, 0.0, 1.0), 0.5);
+            camera.update(shader.id);
+            light.push_uniforms(&shader);
+
+            triangle.rotate(glm::vec3(0.0, 1.0, 0.0), 0.2);
             triangle.draw();
         }
 
-        window.gl_swap_window();
+        window.swap_buffers();
     }
 }
