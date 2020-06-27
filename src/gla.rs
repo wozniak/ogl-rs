@@ -188,6 +188,14 @@ impl Camera {
         self.view = glm::translate(&self.view, &glm::vec3(x, y, z));
     }
 
+    pub fn rotate(&mut self, axis: glm::Vec3, degrees: f32) {
+        self.view = glm::rotate(
+            &self.view,
+            glm::radians(&glm::vec1(degrees))[0] as f32,
+            &axis
+        );
+    }
+
 }
 
 pub struct Light {

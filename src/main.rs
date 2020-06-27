@@ -8,10 +8,11 @@ use std::ffi::c_void;
 use glfw::{Action, Context, Key};
 
 fn main() {
-    let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
+    glfw::WindowHint::DoubleBuffer(false);
+    let mut glfw_instance = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
     // Create a windowed mode window and its OpenGL context
-    let (mut window, events) = glfw.create_window(800, 800, "test", glfw::WindowMode::Windowed)
+    let (mut window, events) = glfw_instance.create_window(800, 800, "test", glfw::WindowMode::Windowed)
         .expect("Failed to create GLFW window.");
 
     // Make the window's context current
@@ -29,15 +30,16 @@ fn main() {
     let mut triangle = gla::Model::new("res/teapot.obj", &shader);
     let light = gla::Light::new(
         glm::vec3(1.0, 1.0, 1.0),
-        glm::vec3(3.0, 3.0, 3.0)
+        glm::vec3(2.0, 3.0, 5.0)
     );
 
     camera.translate(0.0, -2.0, -8.0);
+    // camera.rotate(glm::vec3(0.0, 1.0, 0.0), 180.0);
 
     println!("ready!");
 
     while !window.should_close() {
-        glfw.poll_events();
+        glfw_instance.poll_events();
         for (_, event) in glfw::flush_messages(&events) {
             println!("{:?}", event);
             match event {
@@ -56,8 +58,10 @@ fn main() {
             camera.update(shader.id);
             light.push_uniforms(&shader);
 
-            triangle.rotate(glm::vec3(0.0, 1.0, 0.0), 0.2);
+            triangle.rotate(glm::vec3(0.0, 1.0, 0.0), (glfw_instance.get_time() * 50.0) as f32);
             triangle.draw();
+
+            glfw_instance.set_time(0.0);
         }
 
         window.swap_buffers();
