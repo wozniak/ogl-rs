@@ -23,22 +23,54 @@ fn main() {
 
      unsafe { gl::Enable(gl::DEPTH_TEST) };
 
-    let shader = gla::Shader::new(concat!(env!("CARGO_MANIFEST_DIR"), "/res/teapot_v.glsl"),
-        concat!(env!("CARGO_MANIFEST_DIR"), "/res/teapot_f.glsl"));
-
     let mut camera = gla::Camera::new(70.0, 1.0, 0.1, 100.0);
-    let mut triangle = gla::Model::new("res/teapot.obj", &shader);
-    let light = gla::Light::new(
+    let material = gla::Material::new(
+        concat!(env!("CARGO_MANIFEST_DIR"), "/res/teapot_v.glsl"),
+        concat!(env!("CARGO_MANIFEST_DIR"), "/res/teapot_f.glsl"),
+        glm::vec3(0.1, 0.1, 0.1),
         glm::vec3(1.0, 1.0, 1.0),
-        glm::vec3(2.0, 3.0, 5.0)
+        glm::vec3(1.0, 1.0, 1.0),
+        32,
     );
 
+    let mut teapot1 = gla::Model::new(concat!(env!("CARGO_MANIFEST_DIR"), "/res/teapot.obj"), &material);
+    let mut teapot2 = gla::Model::new(concat!(env!("CARGO_MANIFEST_DIR"), "/res/teapot.obj"), &material);
+    let mut teapot3 = gla::Model::new(concat!(env!("CARGO_MANIFEST_DIR"), "/res/teapot.obj"), &material);
+
+    let light = gla::Light::Point(gla::PointLight::new(
+        glm::vec3(1.0, 1.0, 1.0),
+        glm::vec3(5.0, 5.0, 3.0),
+        0.8,
+    ));
+
     camera.translate(0.0, -2.0, -8.0);
-    // camera.rotate(glm::vec3(0.0, 1.0, 0.0), 180.0);
+
+    teapot1.translate(-1.0, 3.0, -1.5);
+    teapot2.translate(-1.5, -2.0, -0.5);
+    teapot3.translate(2.0, 0.0, 0.0);
 
     println!("ready!");
-
     while !window.should_close() {
+        unsafe {
+            gl::ClearColor(0.7, 0.4, 0.6, 1.0);
+            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+            gl::Viewport(0, 0, 800, 800);
+
+            material.push_uniforms(&camera, &light);
+
+            teapot1.rotate(glm::vec3(0.0, 1.0, 0.0), (glfw_instance.get_time() * 20.0) as f32);
+            teapot1.draw();
+
+            teapot2.rotate(glm::vec3(0.0, 1.0, 0.0), (glfw_instance.get_time() * 15.0) as f32);
+            teapot2.draw();
+
+            teapot3.rotate(glm::vec3(0.0, 1.0, 0.0), (glfw_instance.get_time() * -10.0) as f32);
+            teapot3.draw();
+
+            glfw_instance.set_time(0.0);
+        }
+
+        window.swap_buffers();
         glfw_instance.poll_events();
         for (_, event) in glfw::flush_messages(&events) {
             println!("{:?}", event);
@@ -49,21 +81,5 @@ fn main() {
                 _ => {},
             }
         }
-
-        unsafe {
-            gl::ClearColor(0.7, 0.4, 0.6, 1.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-            gl::Viewport(0, 0, 800, 800);
-
-            camera.update(shader.id);
-            light.push_uniforms(&shader);
-
-            triangle.rotate(glm::vec3(0.0, 1.0, 0.0), (glfw_instance.get_time() * 50.0) as f32);
-            triangle.draw();
-
-            glfw_instance.set_time(0.0);
-        }
-
-        window.swap_buffers();
     }
 }

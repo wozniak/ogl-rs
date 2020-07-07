@@ -7,15 +7,19 @@ use std::io::BufReader;
 use std::io::prelude::*;
 use std::ffi::{CString, CStr};
 
-pub struct Shader {
-    pub id: u32,
+pub struct Material {
+    shader_id: u32,
+    ambient: glm::Vec3,
+    diffuse: glm::Vec3,
+    specular: glm::Vec3,
+    gloss: u32,
 }
 
-impl Shader {
-    pub fn new(vert: &str, frag: &str) -> Shader {
+impl Material {
+    pub fn new(vert: &str, frag: &str, ambient: glm::Vec3, diffuse: glm::Vec3, specular: glm::Vec3, gloss: u32) -> Material {
         fn shader_from_source(
             source: &CStr,
-            kind: gl::types::GLenum) -> gl::types::GLuint {
+            kind: gl::types::GLenum) -> u32 {
             let id = unsafe { gl::CreateShader(kind) };
 
             unsafe {
@@ -43,33 +47,92 @@ impl Shader {
             gl::AttachShader(shader_program, vertex_shader);
             gl::AttachShader(shader_program, fragement_shader);
             gl::LinkProgram(shader_program);
-            Shader { id: shader_program }
+            Material {
+                shader_id: shader_program,
+                ambient,
+                diffuse,
+                specular,
+                gloss,
+            }
         }
     }
 
-    pub unsafe fn uniform_mat4(&self, name: &str, matrix: &glm::TMat4<f32>) {
+    pub fn push_uniforms(&self, camera: &Camera, light: &Light) {
+        unsafe {
+            self.uniform_vec3("material.diffuse", &self.diffuse);
+            self.uniform_vec3("material.specular", &self.specular);
+            self.uniform_vec3("material.ambient", &self.ambient);
+            self.uniform_uint("material.gloss", self.gloss);
+
+            match light {
+                Light::Point(point) => {
+                    self.uniform_uint("light.type", 0);
+
+                    self.uniform_float("light.strength", point.strength);
+                    self.uniform_vec3("light.color", &point.color);
+                    self.uniform_vec4("light.position", &glm::vec4(point.position.x, point.position.y, point.position.z, 1.0));
+                }
+
+                Light::Directional(directional) => {
+
+                    self.uniform_float("light.strength", directional.strength);
+                    self.uniform_vec3("light.color", &directional.color);
+                    self.uniform_vec4("light.position", &glm::vec4(
+                        directional.direction.x,
+                        directional.direction.y,
+                        directional.direction.z,
+                        0.0
+                    ));
+                }
+            }
+
+            self.uniform_vec3("viewPos", &camera.position);
+            self.uniform_mat4("view", &camera.view);
+            self.uniform_mat4("projection", &camera.projection);
+        }
+    }
+
+    unsafe fn uniform_mat4(&self, name: &str, matrix: &glm::TMat4<f32>) {
         self.use_program();
         gl::UniformMatrix4fv(self.get_uniform(name), 1, gl::FALSE, glm::value_ptr(matrix).as_ptr());
     }
 
-    pub unsafe fn uniform_vec3(&self, name: &str, x: f32, y: f32, z: f32) {
+    unsafe fn uniform_vec3(&self, name: &str, vec: &glm::Vec3) {
         self.use_program();
-        gl::Uniform3f(self.get_uniform(name), x, y, z);
+        gl::Uniform3f(self.get_uniform(name), vec.x, vec.y, vec.z);
     }
 
-    pub unsafe fn use_program(&self) {
-        gl::UseProgram(self.id);
+    unsafe fn uniform_vec4(&self, name: &str, vec: &glm::Vec4) {
+        self.use_program();
+        gl::Uniform4f(self.get_uniform(name), vec.x, vec.y, vec.z, vec.w);
     }
+
+    unsafe fn uniform_float(&self, name: &str, float: f32) {
+        self.use_program();
+        gl::Uniform1f(self.get_uniform(name), float);
+    }
+
+    unsafe fn uniform_uint(&self, name: &str, uint: u32) {
+        self.use_program();
+        gl::Uniform1ui(self.get_uniform(name), uint);
+    }
+
+    unsafe fn uniform_int(&self, name: &str, int: i32) {
+        self.use_program();
+        gl::Uniform1i(self.get_uniform(name), int);
+    }
+
+    pub unsafe fn use_program(&self) { gl::UseProgram(self.shader_id); }
 
     pub unsafe fn get_uniform(&self, name: &str) -> i32 {
         self.use_program();
-        gl::GetUniformLocation(self.id,
+        gl::GetUniformLocation(self.shader_id,
             CString::new(name).unwrap().as_ptr())
     }
 }
 
 pub struct Model<'a> {
-    shader: &'a Shader,
+    material: &'a Material,
     pub transform: glm::TMat4<f32>,
     indices: Vec<u32>,
     transform_id: i32,
@@ -77,13 +140,15 @@ pub struct Model<'a> {
     pub vbo: u32,
 }
 
-impl<'a> Model<'a> {
-    pub fn new(obj_file: &'a str, shader: &'a Shader) -> Model<'a> {
+impl Model<'_> {
+    pub fn new<'a>(obj_file: &'a str, material: &'a Material) -> Model<'a> {
         let (mut models, _) = tobj::load_obj(&obj_file, true).unwrap();
         let mut mesh = models.swap_remove(0).mesh;
 
         let mut full_verts = Vec::new();
         let vert_count = mesh.positions.len();
+
+        println!("{:?}", mesh.normals);
 
         full_verts.append(&mut mesh.positions);
         full_verts.append(&mut mesh.normals);
@@ -92,7 +157,7 @@ impl<'a> Model<'a> {
         let mut vbo: u32 = 0;
         let mut ibo: u32 = 0;
 
-        let transform_id = unsafe { shader.get_uniform("transform") };
+        let transform_id = unsafe { material.get_uniform("transform") };
 
         let mut transform: glm::TMat4<f32> = glm::TMat4::identity();
 
@@ -117,15 +182,12 @@ impl<'a> Model<'a> {
             gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, 3 * FLOAT_SIZE as i32, 0 as *const c_void);
             gl::EnableVertexAttribArray(0);
 
-            gl::VertexAttribPointer(1, 3, gl::FLOAT, gl::FALSE,
-                                    3 * FLOAT_SIZE as i32, (vert_count as isize * FLOAT_SIZE) as *const c_void);
-
+            gl::VertexAttribPointer(1, 3, gl::FLOAT, gl::FALSE, 3 * FLOAT_SIZE as i32, (vert_count as isize * FLOAT_SIZE) as *const c_void);
             gl::EnableVertexAttribArray(1);
 
-            shader.use_program();
         };
         Model {
-            shader,
+            material,
             transform,
             transform_id,
             indices: mesh.indices,
@@ -135,20 +197,20 @@ impl<'a> Model<'a> {
     }
 
     pub unsafe fn draw(&self) {
-        self.shader.use_program();
-        self.shader.uniform_mat4("transform", &self.transform);
+        self.material.use_program();
+        self.material.uniform_mat4("transform", &self.transform);
         gl::BindVertexArray(self.vao);
         gl::DrawElements(gl::TRIANGLES, self.indices.len() as i32,
                          gl::UNSIGNED_INT, *self.indices.as_ptr() as *const c_void)
     }
 
-    pub unsafe fn translate(&mut self, x: f32, y: f32, z: f32) {
+    pub fn translate(&mut self, x: f32, y: f32, z: f32) {
         self.transform = glm::translate(
             &self.transform,
             &glm::vec3(x, y, z));
     }
 
-    pub unsafe fn rotate(&mut self, axis: glm::Vec3, degrees: f32) {
+    pub fn rotate(&mut self, axis: glm::Vec3, degrees: f32) {
         self.transform = glm::rotate(
             &self.transform,
             glm::radians(&glm::vec1(degrees))[0],
@@ -159,8 +221,9 @@ impl<'a> Model<'a> {
 
 pub struct Camera {
     fov: f32,
-    view: glm::TMat4<f32>,
-    projection: glm::TMat4<f32>,
+    view: glm::Mat4,
+    projection: glm::Mat4,
+    pub position: glm::Vec3,
 }
 
 impl Camera {
@@ -168,24 +231,21 @@ impl Camera {
         let projection = glm::perspective(aspect_ratio,
             glm::radians(&glm::vec1(fov))[0] as f32, near, far);
 
+        let mut position = glm::vec3(0.0, 0.0, 0.0);
+
         let view: glm::TMat4<f32> = glm::TMat4::identity();
 
         Camera {
             fov,
             view,
             projection,
+            position,
         }
-    }
-
-    pub unsafe fn update(&self, shader_id: u32) {
-        let s = Shader { id: shader_id };
-        s.use_program();
-        s.uniform_mat4("view", &self.view);
-        s.uniform_mat4("projection", &self.projection);
     }
 
     pub fn translate(&mut self, x: f32, y: f32, z: f32) {
         self.view = glm::translate(&self.view, &glm::vec3(x, y, z));
+        self.position = &self.position + glm::vec3(x, y, z);
     }
 
     pub fn rotate(&mut self, axis: glm::Vec3, degrees: f32) {
@@ -195,20 +255,27 @@ impl Camera {
             &axis
         );
     }
-
 }
 
-pub struct Light {
+pub enum Light {
+    Point(PointLight),
+    Directional(DirectionalLight),
+}
+
+pub struct DirectionalLight {
+    color: glm::Vec3,
+    strength: f32,
+    direction: glm::Vec3,
+}
+
+pub struct PointLight {
     color: glm::Vec3,
     position: glm::Vec3,
+    strength: f32,
 }
 
-impl Light {
-    pub fn new(color: glm::Vec3, position: glm::Vec3) -> Light { Light { color, position } }
-
-    pub unsafe fn push_uniforms(&self, shader: &Shader) {
-        shader.uniform_vec3("lightColor", self.color.x, self.color.y, self.color.z);
-        shader.uniform_vec3("objectColor", 1.0, 1.0, 1.0);
-        shader.uniform_vec3("lightPosition", self.position.x, self.position.y, self.position.z);
+impl PointLight {
+    pub fn new(color: glm::Vec3, position: glm::Vec3, strength: f32) -> PointLight {
+        PointLight { color, position, strength }
     }
 }
