@@ -4,7 +4,6 @@ extern crate glfw;
 extern crate gl;
 extern crate nalgebra_glm as glm;
 
-use std::ffi::c_void;
 use glfw::{Action, Context, Key};
 
 fn main() {
@@ -25,25 +24,27 @@ fn main() {
 
     let mut camera = gla::Camera::new(70.0, 1.0, 0.1, 100.0);
     let material = gla::Material::new(
-        concat!(env!("CARGO_MANIFEST_DIR"), "/res/teapot_v.glsl"),
-        concat!(env!("CARGO_MANIFEST_DIR"), "/res/teapot_f.glsl"),
+        concat!(env!("CARGO_MANIFEST_DIR"), "/assets/teapot_v.glsl"),
+        concat!(env!("CARGO_MANIFEST_DIR"), "/assets/teapot_f.glsl"),
         glm::vec3(0.1, 0.1, 0.1),
         glm::vec3(1.0, 1.0, 1.0),
         glm::vec3(1.0, 1.0, 1.0),
         32,
     );
 
-    let mut teapot1 = gla::Model::new(concat!(env!("CARGO_MANIFEST_DIR"), "/res/teapot.obj"), &material);
-    let mut teapot2 = gla::Model::new(concat!(env!("CARGO_MANIFEST_DIR"), "/res/teapot.obj"), &material);
-    let mut teapot3 = gla::Model::new(concat!(env!("CARGO_MANIFEST_DIR"), "/res/teapot.obj"), &material);
+    let mut teapot1 = gla::Model::new(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/teapot.obj"), &material);
+    let mut teapot2 = gla::Model::new(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/teapot.obj"), &material);
+    let mut teapot3 = gla::Model::new(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/teapot.obj"), &material);
+
+    let sphere = gla::Model::new(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/sphere.obj"), &material);
 
     let light = gla::Light::Point(gla::PointLight::new(
-        glm::vec3(1.0, 1.0, 1.0),
-        glm::vec3(5.0, 5.0, 3.0),
-        0.8,
+        glm::vec3(1.0, 0.4, 0.4),
+        glm::vec3(80.0, 80.0, 80.0),
+        100.0
     ));
 
-    camera.translate(0.0, -2.0, -8.0);
+    camera.translate(0.0, 0.0, -90.0);
 
     teapot1.translate(-1.0, 3.0, -1.5);
     teapot2.translate(-1.5, -2.0, -0.5);
@@ -52,20 +53,22 @@ fn main() {
     println!("ready!");
     while !window.should_close() {
         unsafe {
-            gl::ClearColor(0.7, 0.4, 0.6, 1.0);
+            gl::ClearColor(0.5, 0.5, 0.7, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
             gl::Viewport(0, 0, 800, 800);
 
             material.push_uniforms(&camera, &light);
 
-            teapot1.rotate(glm::vec3(0.0, 1.0, 0.0), (glfw_instance.get_time() * 20.0) as f32);
-            teapot1.draw();
+            sphere.draw();
 
-            teapot2.rotate(glm::vec3(0.0, 1.0, 0.0), (glfw_instance.get_time() * 15.0) as f32);
-            teapot2.draw();
+            // teapot1.rotate(glm::vec3(0.0, 1.0, 0.0), (glfw_instance.get_time() * 20.0) as f32);
+            // teapot1.draw();
 
-            teapot3.rotate(glm::vec3(0.0, 1.0, 0.0), (glfw_instance.get_time() * -10.0) as f32);
-            teapot3.draw();
+            // teapot2.rotate(glm::vec3(0.0, 1.0, 0.0), (glfw_instance.get_time() * 15.0) as f32);
+            // teapot2.draw();
+
+            // teapot3.rotate(glm::vec3(0.0, 1.0, 0.0), (glfw_instance.get_time() * -10.0) as f32);
+            // teapot3.draw();
 
             glfw_instance.set_time(0.0);
         }

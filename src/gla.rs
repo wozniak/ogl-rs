@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 extern crate tobj;
+extern crate nalgebra_glm;
 
 use std::ffi::c_void;
 use std::fs::File;
-use std::io::BufReader;
 use std::io::prelude::*;
 use std::ffi::{CString, CStr};
 
@@ -67,22 +67,15 @@ impl Material {
             match light {
                 Light::Point(point) => {
                     self.uniform_uint("light.type", 0);
-
-                    self.uniform_float("light.strength", point.strength);
                     self.uniform_vec3("light.color", &point.color);
-                    self.uniform_vec4("light.position", &glm::vec4(point.position.x, point.position.y, point.position.z, 1.0));
+                    self.uniform_vec4("light.vector", &point.position);
+                    self.uniform_float("light.range", point.range);
                 }
 
                 Light::Directional(directional) => {
-
                     self.uniform_float("light.strength", directional.strength);
                     self.uniform_vec3("light.color", &directional.color);
-                    self.uniform_vec4("light.position", &glm::vec4(
-                        directional.direction.x,
-                        directional.direction.y,
-                        directional.direction.z,
-                        0.0
-                    ));
+                    self.uniform_vec4("light.vector", &directional.direction);
                 }
             }
 
@@ -148,8 +141,6 @@ impl Model<'_> {
         let mut full_verts = Vec::new();
         let vert_count = mesh.positions.len();
 
-        println!("{:?}", mesh.normals);
-
         full_verts.append(&mut mesh.positions);
         full_verts.append(&mut mesh.normals);
 
@@ -159,7 +150,7 @@ impl Model<'_> {
 
         let transform_id = unsafe { material.get_uniform("transform") };
 
-        let mut transform: glm::TMat4<f32> = glm::TMat4::identity();
+        let transform: glm::TMat4<f32> = glm::TMat4::identity();
 
         unsafe {
             const FLOAT_SIZE: isize = std::mem::size_of::<f32>() as isize;
@@ -210,6 +201,12 @@ impl Model<'_> {
             &glm::vec3(x, y, z));
     }
 
+    pub fn scale(&mut self, x: f32, y: f32, z: f32) {
+        self.transform = glm::scale(&self.transform,
+            &glm::vec3(x, y, z)
+        );
+    }
+
     pub fn rotate(&mut self, axis: glm::Vec3, degrees: f32) {
         self.transform = glm::rotate(
             &self.transform,
@@ -231,7 +228,7 @@ impl Camera {
         let projection = glm::perspective(aspect_ratio,
             glm::radians(&glm::vec1(fov))[0] as f32, near, far);
 
-        let mut position = glm::vec3(0.0, 0.0, 0.0);
+        let position = glm::vec3(0.0, 0.0, 0.0);
 
         let view: glm::TMat4<f32> = glm::TMat4::identity();
 
@@ -265,17 +262,22 @@ pub enum Light {
 pub struct DirectionalLight {
     color: glm::Vec3,
     strength: f32,
-    direction: glm::Vec3,
+    direction: glm::Vec4,
 }
 
 pub struct PointLight {
     color: glm::Vec3,
-    position: glm::Vec3,
-    strength: f32,
+    position: glm::Vec4,
+    range: f32,
 }
 
 impl PointLight {
-    pub fn new(color: glm::Vec3, position: glm::Vec3, strength: f32) -> PointLight {
-        PointLight { color, position, strength }
+    pub fn new(color: glm::Vec3, position: glm::Vec3, range: f32) -> PointLight {
+        let position = glm::vec4(position[0], position[1], position[2], 1.0);
+        PointLight {
+            color,
+            position,
+            range,
+        }
     }
 }
