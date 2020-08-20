@@ -68,14 +68,23 @@ impl Material {
                 Light::Point(point) => {
                     self.uniform_uint("light.type", 0);
                     self.uniform_vec3("light.color", &point.color);
-                    self.uniform_vec4("light.vector", &point.position);
-                    self.uniform_float("light.range", point.range);
+                    self.uniform_vec4("light.position", &point.position);
+                    self.uniform_float("light.linear", point.linear);
+                    self.uniform_float("light.quadratic", point.quadratic);
                 }
 
                 Light::Directional(directional) => {
-                    self.uniform_float("light.strength", directional.strength);
+                    self.uniform_float("light.strength", 1.0);
                     self.uniform_vec3("light.color", &directional.color);
-                    self.uniform_vec4("light.vector", &directional.direction);
+                    self.uniform_vec3("light.direction", &directional.direction);
+                }
+
+                Light::Spot(spot) => {
+                    self.uniform_float("light.radius", glm::cos(&glm::radians(&glm::vec1(spot.radius)))[0]);
+                    self.uniform_float("light.quadratic", spot.quadratic);
+                    self.uniform_float("light.linear", spot.linear);
+                    self.uniform_vec4("light.position", &spot.position);
+                    self.uniform_vec3("light.direction", &spot.direction);
                 }
             }
 
@@ -217,10 +226,11 @@ impl Model<'_> {
 }
 
 pub struct Camera {
-    fov: f32,
-    view: glm::Mat4,
+    pub fov: f32,
+    pub view: glm::Mat4,
     projection: glm::Mat4,
     pub position: glm::Vec3,
+    direction: glm::Vec3,
 }
 
 impl Camera {
@@ -229,7 +239,6 @@ impl Camera {
             glm::radians(&glm::vec1(fov))[0] as f32, near, far);
 
         let position = glm::vec3(0.0, 0.0, 0.0);
-
         let view: glm::TMat4<f32> = glm::TMat4::identity();
 
         Camera {
@@ -237,6 +246,7 @@ impl Camera {
             view,
             projection,
             position,
+            direction: glm::vec3(0.0, 0.0, 1.0),
         }
     }
 
@@ -252,32 +262,82 @@ impl Camera {
             &axis
         );
     }
+
+    pub fn look_at(&mut self, x: f32, y: f32, z: f32) {
+        self.view = glm::look_at(&self.position, &glm::vec3(x, y, z), &glm::vec3(0., 1., 0.));
+    }
 }
 
 pub enum Light {
     Point(PointLight),
     Directional(DirectionalLight),
+    Spot(SpotLight),
 }
 
 pub struct DirectionalLight {
     color: glm::Vec3,
-    strength: f32,
-    direction: glm::Vec4,
+    direction: glm::Vec3,
 }
 
 pub struct PointLight {
     color: glm::Vec3,
     position: glm::Vec4,
-    range: f32,
+    linear: f32,
+    quadratic: f32,
+}
+
+pub struct SpotLight {
+    color: glm::Vec3,
+    position: glm::Vec4,
+    direction: glm::Vec3,
+    radius: f32,
+    linear: f32,
+    quadratic: f32,
+}
+
+impl SpotLight {
+    pub fn new(color: glm::Vec3, position: glm::Vec3, direction: glm::Vec3, radius: f32, linear: f32, quadratic: f32) -> SpotLight {
+        let position = glm::vec4(position.x, position.y, position.z, 1.0);
+        SpotLight {
+            color,
+            position,
+            direction,
+            radius,
+            quadratic,
+            linear,
+        }
+    }
+}
+
+impl DirectionalLight {
+    pub fn new(color: glm::Vec3, direction: glm::Vec3) -> DirectionalLight {
+        DirectionalLight {
+            color,
+            direction,
+        }
+    }
 }
 
 impl PointLight {
-    pub fn new(color: glm::Vec3, position: glm::Vec3, range: f32) -> PointLight {
-        let position = glm::vec4(position[0], position[1], position[2], 1.0);
+    pub fn new(color: glm::Vec3, position: glm::Vec3, linear: f32, quadratic: f32) -> PointLight {
+        let position = glm::vec4(position.x, position.y, position.z, 1.0);
         PointLight {
             color,
             position,
-            range,
+            linear,
+            quadratic
         }
     }
+}
+
+pub fn spot_light(color: glm::Vec3, position: glm::Vec3, direction: glm::Vec3, radius: f32, linear: f32, quadratic: f32) -> Light {
+    Light::Spot(SpotLight::new(color, position, direction, radius, linear, quadratic))
+}
+
+pub fn directional_light(color: glm::Vec3, direction: glm::Vec3) -> Light {
+    Light::Directional(DirectionalLight::new(color, direction))
+}
+
+pub fn point_light(color: glm::Vec3, position: glm::Vec3, linear: f32, quadratic: f32) -> Light {
+    Light::Point(PointLight::new(color, position, linear, quadratic))
 }

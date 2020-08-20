@@ -13,8 +13,13 @@ struct Material {
 
 struct Light {
     vec3 color;
-    vec4 vector;
+    vec4 position;
+    vec3 direction;
+    float flashlightCutoff;
     float range;
+    float linear;
+    float quadratic;
+    float radius;
 };
 
 uniform Light light;
@@ -23,11 +28,35 @@ uniform Material material;
 
 void main()
 {
-    //if (light.vector.w == 1.0) {
-        vec3  lightDir    = normalize(vec3(light.vector.x, light.vector.y, light.vector.z) - FragPos);
-        float distance    = length(vec3(light.vector.x, light.vector.y, light.vector.z) - FragPos);
-        float attenuation = 1.0 / pow(distance, 2);
-    //}
+    // point light
+
+
+    /*vec3  lightDir    = normalize(vec3(light.position.x, light.position.y, light.position.z) - FragPos);
+    float distance    = length(vec3(light.position.x, light.vector.y, light.vector.z) - FragPos);
+    float attenuation = 1.0 / (1.0 + light.linear * distance +
+        light.quadratic * (distance * distance));
+    */
+
+    // sun light
+
+
+    vec3 lightDir = -normalize(vec3(light.direction.x, light.direction.y, light.direction.z));
+    float attenuation = 1.0;
+
+
+    // spot light
+    /*
+    float theta = dot(lightDir, normalize(-light.direction));
+
+    if(theta > light.flashlightCutoff)
+    {
+      float attenuation = 1.0 / (1.0 + light.linear * distance +
+        light.quadratic * (distance * distance));
+    }
+    else  // else, use ambient light so scene isn't completely dark outside the spotlight.
+      float attenuation = 0.1;
+    */
+
 
     vec3 norm = normalize(Normal);
 
